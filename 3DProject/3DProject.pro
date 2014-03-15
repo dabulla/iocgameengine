@@ -5,6 +5,8 @@ DEPLOYMENTFOLDERS = folder_01
 
 QMAKE_CXXFLAGS += -std=c++0x
 
+QMAKE_CFLAGS_WARN_OFF = -Wunused-local-typedefs
+
 # Additional import path used to resolve QML modules in Creator's code model
 QML_IMPORT_PATH =
 

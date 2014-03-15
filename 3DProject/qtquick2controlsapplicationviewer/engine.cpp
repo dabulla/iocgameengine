@@ -2,7 +2,44 @@
 #include "qtquickinputeventswindow.h"
 #include <QHash>
 #include <typeinfo>
+#include "autowiredptr.h"
 
+class IEngineObjectPrivate
+{
+private:
+    Engine *m_pEngine;
+    QList<__AutowiredPtrContainer> m_engineReceivers;
+    void SetEngine(Engine *pe)
+    {
+        m_pEngine = pe;
+        foreach(__AutowiredPtrContainer ptr, m_engineReceivers)
+        {
+            ptr(m_pEngine);
+        }
+    }
+    friend class IEngineObject;
+    friend class Engine;
+};
+
+IEngineObject::IEngineObject()
+    :d(new IEngineObjectPrivate)
+{
+}
+
+IEngineObject::~IEngineObject()
+{
+    delete d;
+}
+
+void IEngineObject::__AutowiredPtr_add(__AutowiredPtrContainer fn)
+{
+    d->m_engineReceivers.append(fn);
+}
+
+Engine &IEngineObject::GetEngine() const
+{
+    return *d->m_pEngine;
+}
 
 Engine::Engine()
     : d(new EnginePrivate())
@@ -17,24 +54,34 @@ Engine::~Engine()
 int Engine::Start(int argc, char *argv[])
 {
     QList<IEngineObject*> engObjs;
-    QHashNamedModules map;
-    foreach( map, d->m_Classes )
-    {
-        foreach(Module mod, map )
+//    QHashNamedModules map;
+//    foreach( map, d->m_Classes )
+//    {
+        foreach(Module mod, d->m_ModulesByName )
         {
             IEngineObject *engObj = mod.ptr.cast<IEngineObject>();
             if(engObj == NULL) continue;
-            engObj->SetEngine(this);
+            engObj->d->SetEngine(this);
             engObj->PublishServices();
             engObjs.append(engObj);
         }
-    }
+//    }
     // All Objects had chance to publish dependencies of other objs.
     foreach(IEngineObject* ptr, engObjs )
     {
         ptr->Activated();
     }
-    return GetImmediate<IStarter>().Start(argc, argv);
+    IStarter *pStarter = GetImmediate<IStarter>();
+    int rc;
+    if(pStarter)
+    {
+        rc = pStarter->Start(argc, argv);
+    }
+    else
+    {
+        rc = 0;
+    }
+    return rc;
 }
 
 const QString& Engine::GetString(const QString &name) const

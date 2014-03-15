@@ -7,7 +7,9 @@ void addSceneModules(Engine& engine)
 {
     engine.Set<IRenderSurface>(new QtQuickInputEventsWindow())
             .alias<IScriptProvider>();
-    engine.Set<QString>(QString::fromUtf8("QmlSource"), QString::fromUtf8("qml/3DProject/main.qml"));
+    QString name = "QmlSource";
+    QString value = "qml/3DProject/main.qml";
+    engine.Set<QString>(name, value, true);
     //engine.Set<IStarter>(new QApplicationStarterModule);
 }
 

@@ -15,16 +15,21 @@ class any_ptr {
     template <typename T>
     static void thrower(void* ptr) { throw static_cast<T*>(ptr); }
     template <typename T>
-    static void deleter(void* ptr) { delete (static_cast<T*>(ptr)); }
+    static void deleter(void* ptr)
+    {
+        T* typed = static_cast<T*>(ptr);
+        delete typed;
+    }
 
 public:
-
+    templ but its not a templ
     template <typename T>
     any_ptr(T* ptr) : ptr_(ptr), thr_(&thrower<T>), del_(&deleter<T>) {}
     any_ptr() : ptr_(0), thr_(0), del_(0) {}
 
     template <typename U>
     U* cast() const {
+        Hell I hope it can really cast...
         //todo: disable in final code. Detect wrong casts only while debugging because try/catch costs performance
         try { thr_(ptr_); }
         catch (U* ptr) { return static_cast<U*>(ptr); }
@@ -53,14 +58,16 @@ struct Module
     any_ptr ptr;
 };
 
-typedef QHash<QString, Module > QHashNamedModules;
-typedef QHash<QString, QHashNamedModules > QHashModules;
+//typedef QHash<QString, Module > QHashNamedModules;
+//typedef QHash<QString, QHashNamedModules > QHashModules;
+typedef QHash<QString, Module > QHashNameToModule;
+typedef QHash<QString, QList<Module> > QHashTypeToModules;
 
 class EnginePrivate
 {
     ~EnginePrivate()
     {
-        foreach(any_ptr pDel, m_listDelete)
+        foreach(any_ptr pDel, m_listInternalBeans)
         {
             pDel.del();
         }
@@ -71,10 +78,12 @@ class EnginePrivate
     QHash<QString, float> m_Floats;
     QHash<QString, QVector3D> m_Vectors;
     QHash<QString, QMatrix4x4> m_Matrices;
-    QHashModules m_Classes;
+    //QHashModules m_Classes;
+    QHashNameToModule m_ModulesByName;
+    QHashTypeToModules m_ModulesByType;
     QHash<QString, listenerInternal_t > m_ListListeners;
 
-    QList<any_ptr> m_listDelete;
+    QList<any_ptr> m_listInternalBeans;
     friend class Engine;
 };
 
@@ -82,18 +91,22 @@ class EnginePrivate
 template < class T >
 void Engine::Get(listener_t_templated loaded, const QString &name = STD_OBJ_NAME)
 {
-    QHashNamedModules* modulesOfType = &d->m_Classes[rttilookup(T)];
-    QHashNamedModules::Iterator iter(modulesOfType->find(name));
+    //QHashNamedModules* modulesOfType = &d->m_Classes[rttilookup(T)];
+    //QHashNamedModules::Iterator iter(modulesOfType->find(name));
+    QHashNameToModule::Iterator iter(d->m_ModulesByName.find(name));
 
-    if(iter == modulesOfType->end())
+    if(iter == d->m_ModulesByName.end())
     {
         Module module;
         module.pLoaded->connect([loaded](const QString name, any_ptr ptr) -> void
         {
             loaded(name, ptr.cast<T>());
         } );
+        QString typeId = rttilookup(T);
+        module.type = typeId;
         module.name = name;
-        modulesOfType->insert(name, module);
+        d->m_ModulesByName.insert(name, module);
+        d->m_ModulesByType[typeId].append(module);
     }
     else
     {
@@ -102,48 +115,67 @@ void Engine::Get(listener_t_templated loaded, const QString &name = STD_OBJ_NAME
 }
 
 template < class T >
-T& Engine::GetImmediate(const QString &name = STD_OBJ_NAME, const T &defaultValue = static_cast<T>(0))
+T* Engine::GetImmediate(T *defaultValue, const QString &name = STD_OBJ_NAME, const bool bExternal = false)
 {
-    QHashNamedModules *pClasses = d->m_Classes[rttilookup(T)];
-    QHashNamedModules::Iterator iter(pClasses->find(name));
-    T *value;
-    if(iter == pClasses->end())
+    //QHashNamedModules *pClasses = d->m_Classes[rttilookup(T)];
+    //QHashNamedModules::Iterator iter(pClasses->find(name));
+    QHashNameToModule::Iterator iter(d->m_ModulesByName.find(name));
+    if(iter == d->m_ModulesByName.end())
     {
-        Set<T>(name, defaultValue);
+        if(defaultValue != NULL)
+        {
+            Set<T>(defaultValue, name, bExternal);
+        }
         return defaultValue;
     }
     else
     {
-        return *iter->ptr.cast<T>();
+        return iter->ptr.cast<T>();
     }
 }
 
+template < class T >
+T* Engine::GetImmediate(T &defaultValue, const QString &name = STD_OBJ_NAME)
+{
+    //copy defaultValue and use the copy in the system.
+    return GetImmediate(&defaultValue, name, false);
+}
 
 template < class T >
-void Engine::GetAll(listener_t_templated loaded)
+T *Engine::GetImmediate(const QString &name = STD_OBJ_NAME)
+{
+    return GetImmediate<T>((T*)0, name);
+}
+
+template < class T >
+void Engine::GetAll(listener_list_t_templated loaded)
 {
     QString typeId = rttilookup(T);
     d->m_ListListeners[typeId].connect(loaded);
 
-    QHashNamedModules* modulesOfType = &d->m_Classes[typeId];
-    foreach(Module module, *modulesOfType)
+    //QHashNamedModules* modulesOfType = &d->m_Classes[typeId];
+    QList<Module> modulesOfType = d->m_ModulesByType[typeId];
+    foreach(Module module, modulesOfType)
     {
         loaded(module.name, module.ptr.cast<T>());
     }
 }
 
 template < class T >
-ModuleLazyChain< T > Engine::Set(T *ptr, const QString &name = STD_OBJ_NAME, bool bExternal = false)
+ModuleLazyChain< T > Engine::Set(T *ptr, const QString &name = STD_OBJ_NAME, bool bDeleteOnRemove = true)
 {
-    QHashNamedModules* modulesOfType = &d->m_Classes[rttilookup(T)];
-    QHashNamedModules::Iterator iter = modulesOfType->find(name);
-
-    if(iter == modulesOfType->end())
+    //QHashNamedModules* modulesOfType = &d->m_Classes[rttilookup(T)];
+    //QHashNamedModules::Iterator iter = modulesOfType->find(name);
+    QHashNameToModule::Iterator iter(d->m_ModulesByName.find(name));
+    QString typeId = rttilookup(T);
+    if(iter == d->m_ModulesByName.end())
     {
         Module module;
         module.ptr = any_ptr(ptr);
         module.name = name;
-        modulesOfType->insert(name, module);
+        module.type = typeId;
+        d->m_ModulesByName.insert(name, module);
+        d->m_ModulesByType[typeId].append(module);
     }
     else
     {
@@ -151,25 +183,28 @@ ModuleLazyChain< T > Engine::Set(T *ptr, const QString &name = STD_OBJ_NAME, boo
         (*iter->pLoaded)(name, iter->ptr);
         iter->name = name;
     }
-    if(!bExternal)
+    if(bDeleteOnRemove)
     {
-        d->m_listDelete.append(ptr);
+        d->m_listInternalBeans.append(ptr);
     }
     return ModuleLazyChain<T>(ptr, this);
 }
 
 template < class T >
-ModuleLazyChain< T > Set(T &obj, const QString &name = STD_OBJ_NAME, bool bExternal = false)
+ModuleLazyChain< T > Engine::Set(T &obj, const QString &name = STD_OBJ_NAME, bool bUseCopy = true)
 {
-    T *pObj = &obj;
-    if(bExternal)
+    T *pObj;
+    if(bUseCopy)
     {
-        return Set<T>(&obj, name, bExternal);
+        //copy the obj and care about lifcycle of obj
+        pObj = new T(obj);
     }
     else
     {
-        return Set<T>(new T(obj), name, bExternal);
+        // use the obj directly. Client guarantees that obj is not deleted.
+        pObj = &obj;
     }
+    return Set<T>(&obj, name, bUseCopy);
 }
 
 template <class T>

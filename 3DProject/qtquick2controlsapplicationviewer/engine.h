@@ -15,16 +15,20 @@ class ICamera;
 class IMaterial;
 class Engine;
 
+typedef std::function<void(Engine*)> __AutowiredPtrContainer;
+class IEngineObjectPrivate;
 class IEngineObject {
-private:
-    Engine *m_pEngine;
-    virtual void SetEngine(Engine *pe) { m_pEngine = pe; }
-protected:
-    Engine& GetEngine(){ return *m_pEngine; }
 public:
+    IEngineObject();
+    virtual ~IEngineObject();
     virtual void PublishServices() = 0;
     virtual void Activated() = 0;
     virtual void Deactivated() = 0;
+    void __AutowiredPtr_add(__AutowiredPtrContainer fn);
+protected:
+    Engine& GetEngine() const;
+private:
+    IEngineObjectPrivate *d;
     friend class Engine;
 };
 
@@ -45,8 +49,17 @@ public:
 template < class T >
 class ModuleLazyChain;
 
+
+enum CollectionChange
+{
+    COLLECTION_ADDED,
+    COLLECTION_REMOVED, //<TODO
+    COLLECTION_REPLACED //<TODO
+};
+
 //Uses template parameter T
 #define listener_t_templated std::function<void(const QString &name, T &obj)>
+#define listener_list_t_templated std::function<void(const QString &name, T &obj, const CollectionChange change)>
 
 class Engine
 {
@@ -60,18 +73,22 @@ public:
     int Start(int argc, char *argv[]);
 
     template < class T >
-    T& GetImmediate(const QString &name, const T& defaultValue);
+    T* GetImmediate(T *defaultValue, const QString &name, const bool bExternal);
+    template < class T >
+    T *GetImmediate(T& defaultValue, const QString &name);
+    template < class T >
+    T *GetImmediate(const QString &name);
     template < class T >
     void Get(listener_t_templated loaded, const QString &name);
     // Engine cares about obj's deletion
     template < class T >
-    ModuleLazyChain< T > Set(T *obj, const QString &name, bool bExternal);
+    ModuleLazyChain< T > Set(T *obj, const QString &name, bool bDeleteOnRemove);
     template < class T >
-    ModuleLazyChain< T > Set(T &obj, const QString &name, bool bExternal);
+    ModuleLazyChain< T > Set(T &obj, const QString &name, bool bUseCopy);
 
     //const reference: updates when new objects are added. GetAll<IRenderable>() must only be called once.
     template < class T >
-    void GetAll(listener_t_templated loaded);
+    void GetAll(listener_list_t_templated loaded);
     const QString& GetString(const QString &name) const;
     const QString& GetString(const QString &name, const QString &valDefault);
     void SetString(const QString &name, QString value);

@@ -131,7 +131,7 @@ void QtQuickInputEventsWindow::PublishServices()
     format->setProfile( QSurfaceFormat::CompatibilityProfile );
     GetEngine().Set<QSurfaceFormat>(format);
 
-    if(this == &GetEngine().GetImmediate<IInputService>())
+    if(this == GetEngine().GetImmediate<IInputService>())
     {
         //Todo:call
         m_pGlobalInputService = GetEngine().Set<IInputService>(new IInputService, "GlobalInput");
@@ -158,9 +158,9 @@ void QtQuickInputEventsWindow::Activated()
     //root object should be transparent. This affects the glClearColor (verification needed)
     setColor(QColor(Qt::transparent));
 
-    setFormat( GetEngine().GetImmediate<QSurfaceFormat>() );
+    setFormat( *GetEngine().GetImmediate<QSurfaceFormat>() );
 
-    QString qmlSource = GetEngine().GetImmediate<QString>("QmlSource");
+    QString qmlSource = *GetEngine().GetImmediate<QString>("QmlSource");
     setSource(qmlSource);
     //d->window->openglContext()->makeCurrent(d->window);
     d->m_time.start();
