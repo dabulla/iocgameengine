@@ -129,12 +129,12 @@ void QtQuickInputEventsWindow::PublishServices()
     // OpenGL 4.2 is used to use nvidia nsight in its current version (only 4.2 supported)
     // Qt makes certain OpenGL-Calls that nsight does not like. Even if the UI is completely disabled, nsight does not work yet.
     format->setProfile( QSurfaceFormat::CompatibilityProfile );
-    GetEngine().Set<QSurfaceFormat>(format);
+    IocContext().Set<QSurfaceFormat>(format);
 
-    if(this == GetEngine().GetImmediate<IInputService>())
+    if(this == IocContext().GetImmediate<IInputService>())
     {
         //Todo:call
-        m_pGlobalInputService = GetEngine().Set<IInputService>(new IInputService, "GlobalInput");
+        m_pGlobalInputService = IocContext().Set<IInputService>(new IInputService, "GlobalInput");
     }
     else
     {
@@ -148,7 +148,7 @@ void QtQuickInputEventsWindow::PublishServices()
 
 void QtQuickInputEventsWindow::Activated()
 {
-    setTitle( GetEngine().GetString("title", "[add title]") );
+    setTitle( IocContext().GetString("title", "[add title]") );
     //Make the UI adopt to the Window on resize
     //setResizeMode(QQuickView::SizeRootObjectToView);
     // Tell Qt we will use OpenGL for this window
@@ -158,14 +158,14 @@ void QtQuickInputEventsWindow::Activated()
     //root object should be transparent. This affects the glClearColor (verification needed)
     setColor(QColor(Qt::transparent));
 
-    setFormat( *GetEngine().GetImmediate<QSurfaceFormat>() );
+    setFormat( *IocContext().GetImmediate<QSurfaceFormat>() );
 
-    QString qmlSource = *GetEngine().GetImmediate<QString>("QmlSource");
+    QString qmlSource = *IocContext().GetImmediate<QString>("QmlSource");
     setSource(qmlSource);
     //d->window->openglContext()->makeCurrent(d->window);
     d->m_time.start();
 
-    QQuickWindow::resize( GetEngine().GetInt("width", 1366), GetEngine().GetInt("height", 768) );
+    QQuickWindow::resize( IocContext().GetInt("width", 1366), IocContext().GetInt("height", 768) );
 
 
     connect( this, SIGNAL( widthChanged( int ) ), this, SLOT( emitResize() ) );

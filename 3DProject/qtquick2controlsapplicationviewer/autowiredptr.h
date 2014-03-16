@@ -24,7 +24,7 @@ public:
     operator QList< T* >() const;
 
 private:
-    void init(const Engine *pEng);
+    void init(const IocContext *pEng);
     AutowiredPtrPrivate<T, szName> *d;
     friend class IEngineObjectPrivate;
 };

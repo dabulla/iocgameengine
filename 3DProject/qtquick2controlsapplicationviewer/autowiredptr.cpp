@@ -3,7 +3,7 @@
 template <class T, const char* szName>
 class AutowiredPtrPrivate
 {
-    const Engine *m_pEngine;
+    const IocContext *m_pEngine;
 
     const QList< std::pair<QString, T> > m_allNamed;
     const QList< T > m_all;
@@ -14,7 +14,7 @@ AutowiredPtr<T, szName>::AutowiredPtr(const IEngineObject *engobj)
     :d(new AutowiredPtrPrivate<T, szName>)
 {
     engobj->__AutowiredPtr_add(
-        [this](Engine *pEng)
+        [this](IocContext *pEng)
         {
             this->d->m_pEngine = pEng;
         });

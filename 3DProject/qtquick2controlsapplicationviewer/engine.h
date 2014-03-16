@@ -8,14 +8,14 @@
 #include <boost/signals2.hpp>
 #include <functional>
 
-#define STD_OBJ_NAME "std"
+#define STD_OBJ_NAME "__st"
 
 class IRenderable;
 class ICamera;
 class IMaterial;
-class Engine;
+class IocContext;
 
-typedef std::function<void(Engine*)> __AutowiredPtrContainer;
+typedef std::function<void(IocContext*)> __AutowiredPtrContainer;
 class IEngineObjectPrivate;
 class IEngineObject {
 public:
@@ -26,10 +26,10 @@ public:
     virtual void Deactivated() = 0;
     void __AutowiredPtr_add(__AutowiredPtrContainer fn);
 protected:
-    Engine& GetEngine() const;
+    IocContext& GetIocContext() const;
 private:
     IEngineObjectPrivate *d;
-    friend class Engine;
+    friend class IocContext;
 };
 
 struct Basic3DScene {
@@ -57,17 +57,27 @@ enum CollectionChange
     COLLECTION_REPLACED //<TODO
 };
 
+//Must be set first. Works only for later registered Beans.
+//class MagicInterfaceInjector
+//{
+//public:
+//    template<class... MagicInterfaces>
+//    MagicInterfaceInjector();
+//private:
+//    class MagicInterfaceInjectorPrivate *d;
+//};
+
 //Uses template parameter T
 #define listener_t_templated std::function<void(const QString &name, T &obj)>
 #define listener_list_t_templated std::function<void(const QString &name, T &obj, const CollectionChange change)>
 
-class Engine
+class IocContext
 {
 private:
-    class EnginePrivate *d;
+    class IocContextPrivate *d;
 public:
-    Engine();
-    ~Engine();
+    IocContext();
+    ~IocContext();
     void Update();
     void Render();
     int Start(int argc, char *argv[]);
@@ -80,9 +90,8 @@ public:
     T *GetImmediate(const QString &name);
     template < class T >
     void Get(listener_t_templated loaded, const QString &name);
-    // Engine cares about obj's deletion
-    template < class T >
-    ModuleLazyChain< T > Set(T *obj, const QString &name, bool bDeleteOnRemove);
+    template < class NamedInterface, class... AdditionalAnonymousInterfaces, class SrcT >
+    ModuleLazyChain< SrcT > Set(SrcT *ptr, const QString &name, bool bDeleteOnRemove);
     template < class T >
     ModuleLazyChain< T > Set(T &obj, const QString &name, bool bUseCopy);
 
@@ -111,9 +120,9 @@ class ModuleLazyChain
 {
 private:
     T* m_pRef;
-    Engine *m_pEngine;
-    ModuleLazyChain(T *ptr, Engine *engine);
-    friend class Engine;
+    IocContext *m_pEngine;
+    ModuleLazyChain(T *ptr, IocContext *engine);
+    friend class IocContext;
 public:
     ModuleLazyChain< T > alias(const QString &name);
 

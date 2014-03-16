@@ -7,9 +7,9 @@
 class IEngineObjectPrivate
 {
 private:
-    Engine *m_pEngine;
+    IocContext *m_pEngine;
     QList<__AutowiredPtrContainer> m_engineReceivers;
-    void SetEngine(Engine *pe)
+    void SetEngine(IocContext *pe)
     {
         m_pEngine = pe;
         foreach(__AutowiredPtrContainer ptr, m_engineReceivers)
@@ -18,7 +18,7 @@ private:
         }
     }
     friend class IEngineObject;
-    friend class Engine;
+    friend class IocContext;
 };
 
 IEngineObject::IEngineObject()
@@ -36,22 +36,22 @@ void IEngineObject::__AutowiredPtr_add(__AutowiredPtrContainer fn)
     d->m_engineReceivers.append(fn);
 }
 
-Engine &IEngineObject::GetEngine() const
+IocContext &IEngineObject::GetIocContext() const
 {
     return *d->m_pEngine;
 }
 
-Engine::Engine()
-    : d(new EnginePrivate())
+IocContext::IocContext()
+    : d(new IocContextPrivate())
 {
 }
 
-Engine::~Engine()
+IocContext::~IocContext()
 {
     delete d;
 }
 
-int Engine::Start(int argc, char *argv[])
+int IocContext::Start(int argc, char *argv[])
 {
     QList<IEngineObject*> engObjs;
 //    QHashNamedModules map;
@@ -59,7 +59,7 @@ int Engine::Start(int argc, char *argv[])
 //    {
         foreach(Module mod, d->m_ModulesByName )
         {
-            IEngineObject *engObj = mod.ptr.cast<IEngineObject>();
+            IEngineObject *engObj = cast_any_bean_ptr(IEngineObject, mod.ptr);
             if(engObj == NULL) continue;
             engObj->d->SetEngine(this);
             engObj->PublishServices();
@@ -84,14 +84,14 @@ int Engine::Start(int argc, char *argv[])
     return rc;
 }
 
-const QString& Engine::GetString(const QString &name) const
+const QString& IocContext::GetString(const QString &name) const
 {
     QHash<QString, QString>::Iterator i = d->m_Strings.find(name);
     Q_ASSERT(i != d->m_Strings.end());
     return i.value();
 }
 
-const QString& Engine::GetString(const QString &name, const QString& valDefault)
+const QString& IocContext::GetString(const QString &name, const QString& valDefault)
 {
     QHash<QString, QString>::Iterator i = d->m_Strings.find(name);
     if(i != d->m_Strings.end())
@@ -105,19 +105,19 @@ const QString& Engine::GetString(const QString &name, const QString& valDefault)
     }
 }
 
-void Engine::SetString(const QString &name, QString value)
+void IocContext::SetString(const QString &name, QString value)
 {
     d->m_Strings[name] = value;
 }
 
-const int& Engine::GetInt(const QString &name) const
+const int& IocContext::GetInt(const QString &name) const
 {
     QHash<QString, int>::Iterator i = d->m_Ints.find(name);
     Q_ASSERT(i != d->m_Ints.end());
     return i.value();
 }
 
-const int& Engine::GetInt(const QString &name, const int& valDefault)
+const int& IocContext::GetInt(const QString &name, const int& valDefault)
 {
     QHash<QString, int>::Iterator i = d->m_Ints.find(name);
     if( i != d->m_Ints.end() )
@@ -131,19 +131,19 @@ const int& Engine::GetInt(const QString &name, const int& valDefault)
     }
 }
 
-void Engine::SetInt(const QString &name, int value)
+void IocContext::SetInt(const QString &name, int value)
 {
     d->m_Ints[name] = value;
 }
 
-const float& Engine::GetFloat(const QString &name) const
+const float& IocContext::GetFloat(const QString &name) const
 {
     QHash<QString, float>::Iterator i = d->m_Floats.find(name);
     Q_ASSERT(i != d->m_Floats.end());
     return i.value();
 }
 
-const float& Engine::GetFloat(const QString &name, const float& valDefault)
+const float& IocContext::GetFloat(const QString &name, const float& valDefault)
 {
     QHash<QString, float>::Iterator i = d->m_Floats.find(name);
     if( i != d->m_Floats.end() )
@@ -157,19 +157,19 @@ const float& Engine::GetFloat(const QString &name, const float& valDefault)
     }
 }
 
-void Engine::SetFloat(const QString &name, float value)
+void IocContext::SetFloat(const QString &name, float value)
 {
     d->m_Floats[name] = value;
 }
 
-const QVector3D& Engine::GetVector3f(const QString &name) const
+const QVector3D& IocContext::GetVector3f(const QString &name) const
 {
     QHash<QString, QVector3D>::Iterator i = d->m_Vectors.find(name);
     Q_ASSERT(i != d->m_Vectors.end());
     return i.value();
 }
 
-const QVector3D& Engine::GetVector3f(const QString &name, const QVector3D& valDefault)
+const QVector3D& IocContext::GetVector3f(const QString &name, const QVector3D& valDefault)
 {
     QHash<QString, QVector3D>::Iterator i = d->m_Vectors.find(name);
     if( i != d->m_Vectors.end() )
@@ -183,19 +183,19 @@ const QVector3D& Engine::GetVector3f(const QString &name, const QVector3D& valDe
     }
 }
 
-void Engine::SetVector3f(const QString &name, QVector3D value)
+void IocContext::SetVector3f(const QString &name, QVector3D value)
 {
     d->m_Vectors[name] = value;
 }
 
-const QMatrix4x4& Engine::GetMatrix4f(const QString &name) const
+const QMatrix4x4& IocContext::GetMatrix4f(const QString &name) const
 {
     QHash<QString, QMatrix4x4>::Iterator i = d->m_Matrices.find(name);
     Q_ASSERT(i != d->m_Matrices.end());
     return i.value();
 }
 
-const QMatrix4x4& Engine::GetMatrix4f(const QString &name, const QMatrix4x4 &valDefault)
+const QMatrix4x4& IocContext::GetMatrix4f(const QString &name, const QMatrix4x4 &valDefault)
 {
     QHash<QString, QMatrix4x4>::Iterator i = d->m_Matrices.find(name);
     if( i != d->m_Matrices.end() )
@@ -209,7 +209,7 @@ const QMatrix4x4& Engine::GetMatrix4f(const QString &name, const QMatrix4x4 &val
     }
 }
 
-void Engine::SetMatrix4f(const QString &name, QMatrix4x4 value)
+void IocContext::SetMatrix4f(const QString &name, QMatrix4x4 value)
 {
     d->m_Matrices[name] = value;
 }
