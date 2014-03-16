@@ -69,7 +69,7 @@ enum CollectionChange
 
 //Uses template parameter T
 #define listener_t_templated std::function<void(const QString &name, T &obj)>
-#define listener_list_t_templated std::function<void(const QString &name, T &obj, const CollectionChange change)>
+#define listener_list_t_templated std::function<void(const QString &name, T *pObj, const CollectionChange change)>
 
 class IocContext
 {
@@ -90,10 +90,12 @@ public:
     T *GetImmediate(const QString &name);
     template < class T >
     void Get(listener_t_templated loaded, const QString &name);
+    template < class T >
+    QList<T*> GetAllImmediate();
     template < class NamedInterface, class... AdditionalAnonymousInterfaces, class SrcT >
     ModuleLazyChain< SrcT > Set(SrcT *ptr, const QString &name, bool bDeleteOnRemove);
-    template < class T >
-    ModuleLazyChain< T > Set(T &obj, const QString &name, bool bUseCopy);
+    template < class NamedInterface, class... AdditionalAnonymousInterfaces, class SrcT >
+    ModuleLazyChain< SrcT > Set(SrcT &obj, const QString &name, bool bUseCopy);
 
     //const reference: updates when new objects are added. GetAll<IRenderable>() must only be called once.
     template < class T >
@@ -126,8 +128,8 @@ private:
 public:
     ModuleLazyChain< T > alias(const QString &name);
 
-    template < class NewT >
-    ModuleLazyChain< NewT > alias(const QString &name = STD_OBJ_NAME );
+//    template < class NewT >
+//    ModuleLazyChain< NewT > alias(const QString &name = STD_OBJ_NAME );
     operator T*() {return m_pRef;}
 };
 

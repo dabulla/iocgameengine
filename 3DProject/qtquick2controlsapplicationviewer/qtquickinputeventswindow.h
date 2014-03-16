@@ -7,11 +7,14 @@
 #include "iscriptprovider.h"
 #include "iinputservice.h"
 #include "iupdater.h"
+#include "iupdating.h"
+#include "autowiredptr.h"
 
 class QtQuickInputEventsWindow : public QQuickView, public IRenderSurface, public IScriptProvider, public IUpdater, public IInputService, public IEngineObject
 {
     Q_OBJECT
 private:
+    AutowiredPtr<IUpdating> m_allUpdating;
     void setMainQmlFile(const QString &file);
     void addImportPath(const QString &path);
     void emitUpdate();
@@ -21,7 +24,6 @@ private:
 public:
     QtQuickInputEventsWindow();
     virtual ~QtQuickInputEventsWindow();
-
 
 
     void keyPressEvent( QKeyEvent* e );

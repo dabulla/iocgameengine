@@ -3,3 +3,7 @@
 IScriptProvider::IScriptProvider()
 {
 }
+
+IScriptProvider::~IScriptProvider()
+{
+}

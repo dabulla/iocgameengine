@@ -11,6 +11,7 @@ class IInputService
 {
 public:
     IInputService();
+    virtual ~IInputService();
 
     boost::signals2::signal<void(QKeyEvent*)> keyPress;
     boost::signals2::signal<void(QKeyEvent*)> keyRelease;

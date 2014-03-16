@@ -4,3 +4,8 @@ IInputService::IInputService()
 {
 
 }
+IInputService::~IInputService()
+{
+
+}
+

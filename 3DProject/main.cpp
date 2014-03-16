@@ -5,13 +5,11 @@
 
 void addSceneModules(IocContext& engine)
 {
-    engine.Set<IRenderSurface>(new QtQuickInputEventsWindow())
-            .alias<IScriptProvider>();
-    QString name = "QmlSource";
-    QString value = "qml/3DProject/main.qml";
-    engine.Set<QString>(value, name, true);
+    engine.Set<IRenderSurface, IScriptProvider>(new QtQuickInputEventsWindow(), "MainWindow")
+            .alias("RootWindow");
+    engine.Set<QString>(new QString("qml/3DProject/main.qml"), "QmlSource", true);
 
-    QString* test0 = engine.GetImmediate<QString>(new QString("defaultValu"), name);
+    QString* test0 = engine.GetImmediate<QString>(new QString("defaultValu"), "QmlSource");
     IRenderSurface* test1 = engine.GetImmediate<IRenderSurface>();
     IScriptProvider* test2 = engine.GetImmediate<IScriptProvider>();
     QtQuickInputEventsWindow* test3 = engine.GetImmediate<QtQuickInputEventsWindow>();

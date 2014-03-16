@@ -6,27 +6,30 @@
 #include <utility>
 #include <boost/signals2.hpp>
 
-template <class T, const char* szName>
-class AutowiredPtrPrivate;
+template <class T>
+class __AutowiredPtrPrivate;
 
-template <class T, const char* szName = STD_OBJ_NAME>
+template <class T>
 class AutowiredPtr
 {
 public:
-    AutowiredPtr(const IEngineObject *engobj);
+    AutowiredPtr(IEngineObject *engobj);
     virtual ~AutowiredPtr();
 
-    T *GetImmediate() const;
-    void Get(listener_t_templated loaded) const;
+    void Get(QString name, listener_t_templated loaded) const;
+    T *GetImmediate(QString name) const;
     void GetAll(listener_list_t_templated loaded) const;
+    const QList<T*> & GetAllImmediate() const;
 
     operator T*() const;
     operator QList< T* >() const;
 
 private:
     void init(const IocContext *pEng);
-    AutowiredPtrPrivate<T, szName> *d;
+    __AutowiredPtrPrivate<T> *d;
     friend class IEngineObjectPrivate;
 };
+
+#include "autowiredptr_impl.h"
 
 #endif // AUTOWIREDPTR_H

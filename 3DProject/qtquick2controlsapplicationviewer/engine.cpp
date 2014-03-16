@@ -57,7 +57,7 @@ int IocContext::Start(int argc, char *argv[])
 //    QHashNamedModules map;
 //    foreach( map, d->m_Classes )
 //    {
-        foreach(Module mod, d->m_ModulesByName )
+        foreach(Module mod, d->m_ModulesByType[rttilookup(IEngineObject)] )
         {
             IEngineObject *engObj = cast_any_bean_ptr(IEngineObject, mod.ptr);
             if(engObj == NULL) continue;

@@ -36,7 +36,7 @@ private slots:
 };
 
 QtQuickInputEventsWindow::QtQuickInputEventsWindow()
-: QQuickView(), d(new QtQuickInputEventsWindowPrivate())
+: QQuickView(), d(new QtQuickInputEventsWindowPrivate()), m_allUpdating(this)
 {
 }
 
@@ -101,6 +101,10 @@ void QtQuickInputEventsWindow::emitUpdate()
 {
     //TODO: tickcount
     IUpdater::update(0.05);
+    foreach(IUpdating* pUpdating, m_allUpdating.GetAllImmediate())
+    {
+        pUpdating->Update(0.05);
+    }
 }
 
 void QtQuickInputEventsWindow::emitResize(int width, int height)
@@ -117,29 +121,8 @@ void QtQuickInputEventsWindow::emitRender()
 
 void QtQuickInputEventsWindow::PublishServices()
 {
-    QSurfaceFormat *format = new QSurfaceFormat;
-    //QSurfaceFormat format;
-    format->setVersion( 4, 2 ); //Set OpenGL 4.2
-    //Enable AntiAliasing
-    format->setSamples( 4 );
-    //Make sure there is a depth and alpha buffer
-    format->setDepthBufferSize( 24 );
-    format->setAlphaBufferSize(8);
-    // CompatibilityProfile is used so QtQuick works together with OpenGL 4.2
-    // OpenGL 4.2 is used to use nvidia nsight in its current version (only 4.2 supported)
-    // Qt makes certain OpenGL-Calls that nsight does not like. Even if the UI is completely disabled, nsight does not work yet.
-    format->setProfile( QSurfaceFormat::CompatibilityProfile );
-    IocContext().Set<QSurfaceFormat>(format);
+    m_pGlobalInputService = GetIocContext().Set<IInputService>(new IInputService, "GlobalInput");
 
-    if(this == IocContext().GetImmediate<IInputService>())
-    {
-        //Todo:call
-        m_pGlobalInputService = IocContext().Set<IInputService>(new IInputService, "GlobalInput");
-    }
-    else
-    {
-        m_pGlobalInputService = (IInputService*)0;
-    }
 //    GetEngine().Get<IInputService>([this](const QString &name, IInputService &obj)
 //    {
 //        GetEngine().Set<IInputService>(new IInputService, "GlobalInput");
@@ -148,7 +131,7 @@ void QtQuickInputEventsWindow::PublishServices()
 
 void QtQuickInputEventsWindow::Activated()
 {
-    setTitle( IocContext().GetString("title", "[add title]") );
+    setTitle( GetIocContext().GetString("title", "[add title]") );
     //Make the UI adopt to the Window on resize
     //setResizeMode(QQuickView::SizeRootObjectToView);
     // Tell Qt we will use OpenGL for this window
@@ -158,14 +141,26 @@ void QtQuickInputEventsWindow::Activated()
     //root object should be transparent. This affects the glClearColor (verification needed)
     setColor(QColor(Qt::transparent));
 
-    setFormat( *IocContext().GetImmediate<QSurfaceFormat>() );
+    QSurfaceFormat format;
+    //QSurfaceFormat format;
+    format.setVersion( 4, 2 ); //Set OpenGL 4.2
+    //Enable AntiAliasing
+    format.setSamples( 4 );
+    //Make sure there is a depth and alpha buffer
+    format.setDepthBufferSize( 24 );
+    format.setAlphaBufferSize(8);
+    // CompatibilityProfile is used so QtQuick works together with OpenGL 4.2
+    // OpenGL 4.2 is used to use nvidia nsight in its current version (only 4.2 supported)
+    // Qt makes certain OpenGL-Calls that nsight does not like. Even if the UI is completely disabled, nsight does not work yet.
+    format.setProfile( QSurfaceFormat::CompatibilityProfile );
+    setFormat( format );
 
-    QString qmlSource = *IocContext().GetImmediate<QString>("QmlSource");
+    QString qmlSource = *GetIocContext().GetImmediate<QString>("QmlSource");
     setSource(qmlSource);
     //d->window->openglContext()->makeCurrent(d->window);
     d->m_time.start();
 
-    QQuickWindow::resize( IocContext().GetInt("width", 1366), IocContext().GetInt("height", 768) );
+    QQuickWindow::resize( GetIocContext().GetInt("width", 1366), IocContext().GetInt("height", 768) );
 
 
     connect( this, SIGNAL( widthChanged( int ) ), this, SLOT( emitResize() ) );
@@ -181,6 +176,7 @@ void QtQuickInputEventsWindow::Activated()
 
     //Initialize all stuff that need OpenGL+QtQuickUI.
     connect(this, SIGNAL(sceneGraphInitialized()), this, SLOT(emitSceneGraphInitialized()), Qt::DirectConnection );
+    show();
 }
 
 void QtQuickInputEventsWindow::Deactivated()
