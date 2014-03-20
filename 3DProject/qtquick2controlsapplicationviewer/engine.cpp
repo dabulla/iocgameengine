@@ -7,9 +7,9 @@
 class IEngineObjectPrivate
 {
 private:
-    IocContext *m_pEngine;
+    IIocContext *m_pEngine;
     QList<__AutowiredPtrContainer> m_engineReceivers;
-    void SetEngine(IocContext *pe)
+    void SetEngine(IIocContext *pe)
     {
         m_pEngine = pe;
         foreach(__AutowiredPtrContainer ptr, m_engineReceivers)
@@ -18,7 +18,7 @@ private:
         }
     }
     friend class IEngineObject;
-    friend class IocContext;
+    friend class IIocContext;
 };
 
 IEngineObject::IEngineObject()
@@ -36,7 +36,7 @@ void IEngineObject::__AutowiredPtr_add(__AutowiredPtrContainer fn)
     d->m_engineReceivers.append(fn);
 }
 
-IocContext &IEngineObject::GetIocContext() const
+IIocContext &IEngineObject::GetIocContext() const
 {
     return *d->m_pEngine;
 }
@@ -71,7 +71,7 @@ int IocContext::Start(int argc, char *argv[])
     {
         ptr->Activated();
     }
-    IStarter *pStarter = GetImmediate<IStarter>();
+    IStarting *pStarter = GetImmediate<IStarting>();
     int rc;
     if(pStarter)
     {

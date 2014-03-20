@@ -7,15 +7,29 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/signals2.hpp>
 #include <functional>
+#include "iioccontext.h"
+
+#define IIocContext IocContext
+
 
 #define STD_OBJ_NAME "__st"
+
+enum CollectionChange
+{
+    COLLECTION_ADDED,
+    COLLECTION_REMOVED, //<TODO
+    COLLECTION_REPLACED //<TODO
+};
+
+#define listener_t_templated std::function<void(const QString &name, T &obj)>
+#define listener_list_t_templated std::function<void(const QString &name, T *pObj, const CollectionChange change)>
 
 class IRenderable;
 class ICamera;
 class IMaterial;
 class IocContext;
 
-typedef std::function<void(IocContext*)> __AutowiredPtrContainer;
+typedef std::function<void(IIocContext*)> __AutowiredPtrContainer;
 class IEngineObjectPrivate;
 class IEngineObject {
 public:
@@ -26,10 +40,11 @@ public:
     virtual void Deactivated() = 0;
     void __AutowiredPtr_add(__AutowiredPtrContainer fn);
 protected:
-    IocContext& GetIocContext() const;
+    IIocContext& GetIocContext() const;
+    QList<QString> GetNames() const;
 private:
     IEngineObjectPrivate *d;
-    friend class IocContext;
+    friend class IIocContext;
 };
 
 struct Basic3DScene {
@@ -38,7 +53,7 @@ public:
     ICamera *pCcamera;
 };
 
-class IStarter
+class IStarting
 {
 public:
     virtual int Start(int argc, char *argv[]) = 0;
@@ -49,29 +64,7 @@ public:
 template < class T >
 class ModuleLazyChain;
 
-
-enum CollectionChange
-{
-    COLLECTION_ADDED,
-    COLLECTION_REMOVED, //<TODO
-    COLLECTION_REPLACED //<TODO
-};
-
-//Must be set first. Works only for later registered Beans.
-//class MagicInterfaceInjector
-//{
-//public:
-//    template<class... MagicInterfaces>
-//    MagicInterfaceInjector();
-//private:
-//    class MagicInterfaceInjectorPrivate *d;
-//};
-
-//Uses template parameter T
-#define listener_t_templated std::function<void(const QString &name, T &obj)>
-#define listener_list_t_templated std::function<void(const QString &name, T *pObj, const CollectionChange change)>
-
-class IocContext
+class IocContext //: public IIocContext
 {
 private:
     class IocContextPrivate *d;
@@ -83,9 +76,9 @@ public:
     int Start(int argc, char *argv[]);
 
     template < class T >
-    T* GetImmediate(T *defaultValue, const QString &name, const bool bExternal);
+    T* GetImmediateOrRegisterDefault(T *defaultValue, const QString &name, const bool bExternal);
     template < class T >
-    T *GetImmediate(T& defaultValue, const QString &name);
+    T *GetImmediateOrRegisterDefault(T& defaultValue, const QString &name);
     template < class T >
     T *GetImmediate(const QString &name);
     template < class T >
@@ -93,9 +86,9 @@ public:
     template < class T >
     QList<T*> GetAllImmediate();
     template < class NamedInterface, class... AdditionalAnonymousInterfaces, class SrcT >
-    ModuleLazyChain< SrcT > Set(SrcT *ptr, const QString &name, bool bDeleteOnRemove);
+    ModuleLazyChain< SrcT > RegisterBean(SrcT *ptr, const QString &name, bool bDeleteOnRemove, const bool bUseCopy);
     template < class NamedInterface, class... AdditionalAnonymousInterfaces, class SrcT >
-    ModuleLazyChain< SrcT > Set(SrcT &obj, const QString &name, bool bUseCopy);
+    ModuleLazyChain< SrcT > RegisterBean(SrcT &obj, const QString &name, bool bUseCopy);
 
     //const reference: updates when new objects are added. GetAll<IRenderable>() must only be called once.
     template < class T >
@@ -122,9 +115,9 @@ class ModuleLazyChain
 {
 private:
     T* m_pRef;
-    IocContext *m_pEngine;
-    ModuleLazyChain(T *ptr, IocContext *engine);
-    friend class IocContext;
+    IIocContext *m_pEngine;
+    ModuleLazyChain(T *ptr, IIocContext *engine);
+    friend class IIocContext;
 public:
     ModuleLazyChain< T > alias(const QString &name);
 
@@ -132,7 +125,24 @@ public:
 //    ModuleLazyChain< NewT > alias(const QString &name = STD_OBJ_NAME );
     operator T*() {return m_pRef;}
 };
-
+class IocChildContext
+{
+    IocChildContext(const QString conextName);
+    template < class T >
+    T* GetImmediateOrRegisterDefault(T *defaultValue, const QString &name, const bool bExternal);
+    template < class T >
+    T *GetImmediateOrRegisterDefault(T& defaultValue, const QString &name);
+    template < class T >
+    T *GetImmediate(const QString &name);
+    template < class T >
+    void Get(listener_t_templated loaded, const QString &name);
+    template < class T >
+    QList<T*> GetAllImmediate();
+    template < class NamedInterface, class... AdditionalAnonymousInterfaces, class SrcT >
+    ModuleLazyChain< SrcT > RegisterBean(SrcT *ptr, const QString &name, bool bDeleteOnRemove);
+    template < class NamedInterface, class... AdditionalAnonymousInterfaces, class SrcT >
+    ModuleLazyChain< SrcT > RegisterBean(SrcT &obj, const QString &name, bool bUseCopy);
+};
 #include "engine_impl.h"
 
 #endif // ENGINE_H

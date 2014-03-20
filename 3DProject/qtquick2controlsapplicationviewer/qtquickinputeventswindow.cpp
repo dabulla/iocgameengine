@@ -133,11 +133,11 @@ void QtQuickInputEventsWindow::Activated()
 {
     setTitle( GetIocContext().GetString("title", "[add title]") );
     //Make the UI adopt to the Window on resize
-    //setResizeMode(QQuickView::SizeRootObjectToView);
+    setResizeMode(QQuickView::SizeRootObjectToView);
     // Tell Qt we will use OpenGL for this window
     setSurfaceType( OpenGLSurface );
     //Qt should not clear the screen before rendering (this clear our renderings)
-    setClearBeforeRendering(false);
+    //setClearBeforeRendering(false);
     //root object should be transparent. This affects the glClearColor (verification needed)
     setColor(QColor(Qt::transparent));
 

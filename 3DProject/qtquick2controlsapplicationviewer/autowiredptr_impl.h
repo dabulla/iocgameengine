@@ -3,22 +3,27 @@
 
 #include "autowiredptr.h"
 
-template <class T>
+template <class T, const char *pszInternalName>
 class __AutowiredPtrPrivate
 {
-    const IocContext *m_pEngine;
+    const IIocContext *m_pEngine;
 
     QList< std::pair<QString, T*> > m_allNamed;
     QList< T* > m_all;
     friend class AutowiredPtr<T>;
 };
 
-template <class T>
-AutowiredPtr<T>::AutowiredPtr(IEngineObject *engobj)
-    :d(new __AutowiredPtrPrivate<T>)
+//TODO: Implement syntax: "MainWndBean.ICamera.ViewMatrix" (Where "ViewMatrix" ist the internal name)
+// LazyChain.inject("MainWnd.ICamera[2]", typeOrIntenalName);
+// If this is evaluated before the bean exists... care also about lists...
+// remove events. Use Interfaces + Lists.
+
+template <class T, const char *pszInternalName >
+AutowiredPtr<T, pszInternalName>::AutowiredPtr(IEngineObject *engobj)
+    :d(new __AutowiredPtrPrivate<T, pszInternalName>)
 {
     engobj->__AutowiredPtr_add(
-        [this](IocContext *pEng)
+        [this](IIocContext *pEng)
         {
             this->d->m_pEngine = pEng;
             pEng->GetAll<T>(
@@ -29,45 +34,45 @@ AutowiredPtr<T>::AutowiredPtr(IEngineObject *engobj)
         });
 }
 
-template <class T>
-AutowiredPtr<T>::~AutowiredPtr()
+template <class T, const char *pszInternalName>
+AutowiredPtr<T, pszInternalName>::~AutowiredPtr()
 {
     delete d;
 }
 
-template <class T>
-T *AutowiredPtr<T>::GetImmediate(QString name) const
+template <class T, const char *pszInternalName>
+T *AutowiredPtr<T, pszInternalName>::GetImmediate(QString name) const
 {
     return d->m_pEngine->template GetImmediate<T>(name);
 }
 
-template <class T>
-const QList<T*> & AutowiredPtr<T>::GetAllImmediate() const
+template <class T, const char *pszInternalName>
+const QList<T*> & AutowiredPtr<T, pszInternalName>::GetAllImmediate() const
 {
     return d->m_all;
     //return d->m_pEngine->template GetAllImmediate<T>();
 }
 
-template <class T>
-void AutowiredPtr<T>::Get(QString name, listener_t_templated loaded) const
+template <class T, const char *pszInternalName>
+void AutowiredPtr<T, pszInternalName>::Get(QString name, listener_t_templated loaded) const
 {
     d->m_pEngine->template Get<T>(name, loaded);
 }
 
-template <class T>
-void AutowiredPtr<T>::GetAll(listener_list_t_templated loaded) const
+template <class T, const char *pszInternalName>
+void AutowiredPtr<T, pszInternalName>::GetAll(listener_list_t_templated loaded) const
 {
     d->m_pEngine->template GetAll<T>(loaded);
 }
 
-template <class T>
-AutowiredPtr<T>::operator QList<T*>() const
+template <class T, const char *pszInternalName>
+AutowiredPtr<T, pszInternalName>::operator QList<T*>() const
 {
     return d->m_all;
 }
 
-template <class T>
-AutowiredPtr<T>::operator T *() const
+template <class T, const char *pszInternalName>
+AutowiredPtr<T, pszInternalName>::operator T *() const
 {
     return this->template GetImmediate<T>();
 }

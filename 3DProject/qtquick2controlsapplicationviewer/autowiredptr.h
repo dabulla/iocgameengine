@@ -6,10 +6,10 @@
 #include <utility>
 #include <boost/signals2.hpp>
 
-template <class T>
+template <class T, const char *pszInternalName>
 class __AutowiredPtrPrivate;
 
-template <class T>
+template <class T, const char *pszInternalName = (const char*)0>
 class AutowiredPtr
 {
 public:
@@ -25,8 +25,8 @@ public:
     operator QList< T* >() const;
 
 private:
-    void init(const IocContext *pEng);
-    __AutowiredPtrPrivate<T> *d;
+    void init(const IIocContext *pEng);
+    __AutowiredPtrPrivate<T, pszInternalName> *d;
     friend class IEngineObjectPrivate;
 };
 

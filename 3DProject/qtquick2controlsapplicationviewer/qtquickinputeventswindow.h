@@ -21,6 +21,7 @@ private:
     void emitResize(int w, int h);
     void emitRender();
     IInputService *m_pGlobalInputService;
+
 public:
     QtQuickInputEventsWindow();
     virtual ~QtQuickInputEventsWindow();

@@ -120,6 +120,16 @@ class IocContextPrivate
     {}
     template <typename SrcT>
     void _RegisterByTypeTry(Module module, SrcT *ptr) {}
+
+    template <IEngineObject, typename... others, typename SrcT >
+    void _RegisterByTypeTry(Module module, SrcT *ptr)
+    {
+        T
+                //CHanges occured here, test TODO
+        IEngineObject *pObj = static_cast<IEngineObject>(ptr);
+        pObj->__AddName(module.name);
+        _RegisterByTypeTry<IEngineObject, others... , SrcT>(module, *ptr);
+    }
     template <typename T, typename... others, typename SrcT >
     void _RegisterByTypeTry(Module module, SrcT *ptr)
     {
@@ -200,7 +210,7 @@ void IocContext::Get(listener_t_templated loaded, const QString &name = STD_OBJ_
 }
 
 template < class T >
-T* IocContext::GetImmediate(T *defaultValue, const QString &name = STD_OBJ_NAME, const bool bExternal = false)
+T* IocContext::GetImmediateOrRegisterDefault(T *defaultValue, const QString &name = STD_OBJ_NAME, const bool bExternal = false, const bool bUseCopy = false)
 {
     //QHashNamedModules *pClasses = d->m_Classes[rttilookup(T)];
     //QHashNamedModules::Iterator iter(pClasses->find(name));
@@ -210,9 +220,9 @@ T* IocContext::GetImmediate(T *defaultValue, const QString &name = STD_OBJ_NAME,
         QList<Module> *pMods = &d->m_ModulesByType[typeId];
         if(pMods->size() == 0)
         {
-            if(defaultValue)
+            if(defaultValue != NULL)
             {
-                Set<T>(defaultValue, name, bExternal);
+                RegisterBean<T>(defaultValue, name, bExternal, bUseCopy);
             }
             else
             {
@@ -232,7 +242,7 @@ T* IocContext::GetImmediate(T *defaultValue, const QString &name = STD_OBJ_NAME,
         {
             if(defaultValue != NULL)
             {
-                Set<T>(defaultValue, name, bExternal);
+                RegisterBean<T>(defaultValue, name, bExternal, bUseCopy);
             }
             return defaultValue;
         }
@@ -244,16 +254,16 @@ T* IocContext::GetImmediate(T *defaultValue, const QString &name = STD_OBJ_NAME,
 }
 
 template < class T >
-T* IocContext::GetImmediate(T &defaultValue, const QString &name = STD_OBJ_NAME)
+T* IocContext::GetImmediateOrRegisterDefault(T &defaultValue, const QString &name = STD_OBJ_NAME)
 {
     //copy defaultValue and use the copy in the system.
-    return GetImmediate(&defaultValue, name, false);
+    return GetImmediateOrRegisterDefault(defaultValue, name, false);
 }
 
 template < class T >
 T *IocContext::GetImmediate(const QString &name = STD_OBJ_NAME)
 {
-    return GetImmediate<T>((T*)0, name);
+    return GetImmediateOrRegisterDefault<T>((T*)0, name);
 }
 
 template < class T >
@@ -293,8 +303,23 @@ void IocContext::GetAll(listener_list_t_templated loaded)
 }
 
 template < class NamedInterface, class... AdditionalAnonymousInterfaces, class SrcT >
-ModuleLazyChain< SrcT > IocContext::Set(SrcT *ptr, const QString &name = STD_OBJ_NAME, bool bDeleteOnRemove = true)
+ModuleLazyChain< SrcT > IocContext::RegisterBean(SrcT *ptrIn, const QString &name = STD_OBJ_NAME, bool bDeleteOnRemove = true, const bool bUseCopy = false)
 {
+    SrcT ptr;
+    if(bUseCopy)
+    {
+        //copy the obj and care about lifcycle of obj
+        ptr = new SrcT(*ptrIn);
+        if(bDeleteOnRemove == false)
+        {
+            Q_ASSERT(0);//"Invalid arguments: When copying a bean into context lifecycle, it must also delete the bean.");
+        }
+    }
+    else
+    {
+        // use the obj directly. Client guarantees that obj is not deleted for the time the context lives.
+        ptr = ptrIn;
+    }
     //QHashNamedModules* modulesOfType = &d->m_Classes[rttilookup(T)];
     //QHashNamedModules::Iterator iter = modulesOfType->find(name);
     QHashNameToModule::Iterator iter(d->m_ModulesByName.find(name));
@@ -350,24 +375,13 @@ ModuleLazyChain< SrcT > IocContext::Set(SrcT *ptr, const QString &name = STD_OBJ
 }
 
 template < class NamedInterface, class... AdditionalAnonymousInterfaces, class SrcT >
-ModuleLazyChain< SrcT > IocContext::Set(SrcT &obj, const QString &name = STD_OBJ_NAME, bool bUseCopy = true)
+ModuleLazyChain< SrcT > IocContext::RegisterBean(SrcT &obj, const QString &name = STD_OBJ_NAME, bool bUseCopy = true)
 {
-    SrcT *pObj;
-    if(bUseCopy)
-    {
-        //copy the obj and care about lifcycle of obj
-        pObj = new SrcT(obj);
-    }
-    else
-    {
-        // use the obj directly. Client guarantees that obj is not deleted.
-        pObj = &obj;
-    }
-    return Set<NamedInterface, AdditionalAnonymousInterfaces...>(&obj, name, bUseCopy);
+    return RegisterBean<NamedInterface, AdditionalAnonymousInterfaces...>(&obj, name, bUseCopy, bUseCopy);
 }
 
 template <class T>
-ModuleLazyChain<T>::ModuleLazyChain(T *ref, IocContext *engine)
+ModuleLazyChain<T>::ModuleLazyChain(T *ref, IIocContext *engine)
 {
     m_pRef = ref;
     m_pEngine = engine;

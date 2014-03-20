@@ -9,7 +9,7 @@ void addSceneModules(IocContext& engine)
             .alias("RootWindow");
     engine.Set<QString>(new QString("qml/3DProject/main.qml"), "QmlSource", true);
 
-    QString* test0 = engine.GetImmediate<QString>(new QString("defaultValu"), "QmlSource");
+    QString* test0 = engine.GetImmediateOrRegisterDefault<QString>(new QString("defaultValu"), "QmlSource");
     IRenderSurface* test1 = engine.GetImmediate<IRenderSurface>();
     IScriptProvider* test2 = engine.GetImmediate<IScriptProvider>();
     QtQuickInputEventsWindow* test3 = engine.GetImmediate<QtQuickInputEventsWindow>();

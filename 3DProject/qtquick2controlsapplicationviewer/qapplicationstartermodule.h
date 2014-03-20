@@ -3,7 +3,7 @@
 
 #include <engine.h>
 
-class QApplicationStarterModule : public IStarter, public IEngineObject
+class QApplicationStarterModule : public IStarting, public IEngineObject
 {
 public:
     QApplicationStarterModule();
