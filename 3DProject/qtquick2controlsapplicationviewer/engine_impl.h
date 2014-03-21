@@ -5,6 +5,7 @@
 #include <engine.h>
 #include <boost/any.hpp>
 #include <boost/type_traits/is_polymorphic.hpp>
+#include "any_ptr.h"
 
 //comma seperated list
 #define AUTO_INTERFACES IEngineObject
@@ -15,81 +16,43 @@
 //Important: registerBean<My3DScene>.inject<ICamera>("advancedCameraManager")
 //hierarchical IocContexts
 
-// no real use beacuse interfaces are not hierarchical
-class any_ptr {
-
-    void* ptr_;
-    void (*thr_)(void*);
-    //void (*del_)(void*);
-    QString realType;
-
-    template <typename T>
-    static void thrower(void* ptr) { throw static_cast<T*>(ptr); }
-//    template <typename T>
-//    static void deleter(void* ptr)
-//    {
-//        T* typed = static_cast<T*>(ptr);
-//        delete typed;
-//    }
-
-public:
-    template <typename T>
-    any_ptr(T* ptr) : ptr_(ptr), thr_(&thrower<T>), realType(rttilookup(T))/*, del_(&deleter<T>)*/ {}
-    any_ptr() : ptr_(0), thr_(0)/*, del_(0)*/ {}
-
-    template <typename U>
-    U* cast() const {
-        //U* ret = dynamic_cast<U*>(ptr);
-        //if(ret) return ret;
-        try { thr_(ptr_); }
-        catch (U* ptr) { return static_cast<U*>(ptr); }
-        catch (...) {}
-        return 0;
-    }
-    operator bool() const
-    {
-        return ptr_;
-    }
-    void* toVoidPtr() const { return ptr_; }
-
-    //void del() { del_(ptr_); }
-};
-typedef any_ptr any_bean_ptr;
-#define cast_any_bean_ptr(T, ptr) (ptr.cast<T>())
-
 typedef boost::signals2::signal<void(const QString &name, any_bean_ptr &obj)> listenerInternal_t;
 typedef boost::signals2::signal<void(const QString &name, any_bean_ptr &obj, const CollectionChange change)> listenerInternal_list__t;
 
-struct Module
+struct RootBeanInfo
 {
-    Module()
+    RootBeanInfo()
         :pLoaded(new listenerInternal_t), ptr()//(void *)0)
     {}
-    Module(const Module& mod)
-        :name(mod.name), type(mod.type), pLoaded(mod.pLoaded), ptr(mod.ptr)
+    RootBeanInfo(const RootBeanInfo& mod)
+        : pLoaded(mod.pLoaded), ptr(mod.ptr)//, name(mod.name), type(mod.type)
     {}
-    Module(QString name, QString type, listenerInternal_t &loaded, any_bean_ptr ptr)
+    RootBeanInfo(QString name, QString type, listenerInternal_t &loaded, any_bean_ptr ptr)
         :name(name), type(type), pLoaded(&loaded), ptr(ptr)
     {}
-    QString name;
-    QString type;
+    //QString name;
+    //QString type;
+    //For named beans
     boost::shared_ptr<listenerInternal_t> pLoaded;
     any_bean_ptr ptr;
 };
+struct ChildBeanInfo
+{
+    //boost::shared_ptr<listenerInternal_t> pLoaded;
+    any_bean_ptr ptr;
+};
 
-//class MagicInterfaceInjectorPrivate
-//{
-//    template<class SrcT>
-//    QList<Module> cast(SrcT src);
-//}
-
-//typedef QHash<QString, Module > QHashNamedModules;
-//typedef QHash<QString, QHashNamedModules > QHashModules;
-typedef QHash<QString, Module > QHashNameToModule;
-typedef QHash<QString, QList<Module> > QHashTypeToModules;
+typedef QHash<QString, ChildBeanInfo > QHashNameToChildBeanInfo;
+typedef QHash<QString, QList<ChildBeanInfo> > QHashTypeToChildBeanInfo;
+typedef QHash<QString, RootBeanInfo > QHashNameToRootBeanInfo;
+typedef QHash<QString, QList<RootBeanInfo> > QHashTypeToRootBeanInfo;
 
 class IocContextPrivate
 {
+    IocContextPrivate(bool registerInterfacesOnParent)
+        :registerInterfacesOnParent(registerInterfacesOnParent)
+    {}
+
     ~IocContextPrivate()
     {
         foreach(any_bean_ptr pDel, m_listInternalBeans)
@@ -98,40 +61,47 @@ class IocContextPrivate
         }
     }
     template <typename T, typename SrcT>
-    void RegisterByName(Module module, SrcT *ptr)
+    void RegisterByName(RootBeanInfo module, SrcT *ptr)
     {
         module.ptr = any_bean_ptr(dynamic_cast<T*>(ptr));
         m_ModulesByName.insert(module.name, module);
         m_ModulesByType[rttilookup(T)].append(module);
     }
+
     //variadic template recursion end
     template <typename SrcT>
-    void RegisterByType(Module module, SrcT *ptr) {}
+    void RegisterByType(RootBeanInfo module, SrcT *ptr) {}
+
     //variadic template recursion
     template <typename T, typename... others, typename SrcT >
-    void RegisterByType(Module module, SrcT *ptr)
+    void RegisterByType(RootBeanInfo module, SrcT *ptr)
     {
         module.ptr = any_bean_ptr(dynamic_cast<T*>(ptr));
         m_ModulesByType[rttilookup(T)].append(module);
         RegisterByType<others... >(module, ptr);
     }
-    template <typename... some>
-    void RegisterByTypeTry(Module module, QString *ptr)
-    {}
-    template <typename SrcT>
-    void _RegisterByTypeTry(Module module, SrcT *ptr) {}
 
+    //Handle QString explicitly as non polymorphic type
+    template <typename... some>
+    void RegisterByTypeTry(RootBeanInfo module, QString *ptr)
+    {}
+
+    //variadic template recursion end
+    template <typename SrcT>
+    void _RegisterByTypeTry(RootBeanInfo module, SrcT *ptr) {}
+
+    //variadic template recursion with explicit configuration of IBean
     template <IEngineObject, typename... others, typename SrcT >
-    void _RegisterByTypeTry(Module module, SrcT *ptr)
+    void _RegisterByTypeTry(RootBeanInfo module, SrcT *ptr)
     {
-        T
-                //CHanges occured here, test TODO
         IEngineObject *pObj = static_cast<IEngineObject>(ptr);
         pObj->__AddName(module.name);
         _RegisterByTypeTry<IEngineObject, others... , SrcT>(module, *ptr);
     }
+
+    //variadic template recursion
     template <typename T, typename... others, typename SrcT >
-    void _RegisterByTypeTry(Module module, SrcT *ptr)
+    void _RegisterByTypeTry(RootBeanInfo module, SrcT *ptr)
     {
         //TODO: register non polymorphic
         module.ptr = any_bean_ptr(dynamic_cast<T*>(ptr));
@@ -140,7 +110,7 @@ class IocContextPrivate
             //TODO: does this work on multi inheritance?
             void *voidPtr = module.ptr.toVoidPtr();
             bool alreadyContained = false;
-            foreach(Module mod, m_ModulesByType[rttilookup(T)])
+            foreach(RootBeanInfo mod, m_ModulesByType[rttilookup(T)])
             {
                 if(mod.ptr.toVoidPtr() == voidPtr)
                 {
@@ -153,10 +123,12 @@ class IocContextPrivate
                 m_ModulesByType[rttilookup(T)].append(module);
             }
         }
-        RegisterByTypeTry<others... >(module, ptr);
+        _RegisterByTypeTry<others... >(module, ptr);
     }
+
+    //variadic template recursion start
     template <typename... others, typename SrcT >
-    void RegisterByTypeTry(Module module, SrcT *ptr)
+    void RegisterByTypeTry(RootBeanInfo module, SrcT *ptr)
     {
         // maybe some compilers can know this at compile time.
         // ATM e.g. GCC won't let us compile if we register
@@ -169,30 +141,33 @@ class IocContextPrivate
 
     unsigned int m_uniqueNameAppendix = 0;
 
-    QHash<QString, QString> m_Strings;
-    QHash<QString, int> m_Ints;
-    QHash<QString, float> m_Floats;
-    QHash<QString, QVector3D> m_Vectors;
-    QHash<QString, QMatrix4x4> m_Matrices;
+//    QHash<QString, QString> m_Strings;
+//    QHash<QString, int> m_Ints;
+//    QHash<QString, float> m_Floats;
+//    QHash<QString, QVector3D> m_Vectors;
+//    QHash<QString, QMatrix4x4> m_Matrices;
     //QHashModules m_Classes;
-    QHashNameToModule m_ModulesByName;
-    QHashTypeToModules m_ModulesByType;
-    QHash<QString, boost::shared_ptr<listenerInternal_list__t> > m_ListListeners;
+    //Initialized once by root context. Holds all BeanInfos
+    boost::shared_ptr< QHashNameToRootBeanInfo > m_pAllBeansByName;
+    boost::shared_ptr< QHashTypeToRootBeanInfo > m_pAllBeansByType;
+    QHashNameToChildBeanInfo m_ModulesByName;
+    QHashTypeToChildBeanInfo m_ModulesByType;
+    bool isChildCOntext;
+   boost::shared_ptr< QHash<QString, boost::shared_ptr<listenerInternal_list__t> > > m_pAllBeanTypeCollectionListeners;
 
-    QList<any_bean_ptr> m_listInternalBeans;
+    QList<any_bean_ptr> m_listInternalBeansOfChildContext;
     friend class IocContext;
 };
-
+clean up from here
 template < class T >
-void IocContext::Get(listener_t_templated loaded, const QString &name = STD_OBJ_NAME)
+void IocContext::Get(listener_t_templated loaded, const QString &name)
 {
-    //QHashNamedModules* modulesOfType = &d->m_Classes[rttilookup(T)];
-    //QHashNamedModules::Iterator iter(modulesOfType->find(name));
     QHashNameToModule::Iterator iter(d->m_ModulesByName.find(name));
 
     if(iter == d->m_ModulesByName.end())
+    if(iter == d->m_ModulesByName.end())
     {
-        Module module;
+        RootBeanInfo module;
         module.pLoaded->connect([loaded](const QString name, any_ptr ptr)
         {
             loaded(name, ptr.cast<T>());
@@ -217,7 +192,7 @@ T* IocContext::GetImmediateOrRegisterDefault(T *defaultValue, const QString &nam
     if(name == STD_OBJ_NAME)
     {
         QString typeId = rttilookup(T);
-        QList<Module> *pMods = &d->m_ModulesByType[typeId];
+        QList<RootBeanInfo> *pMods = &d->m_ModulesByType[typeId];
         if(pMods->size() == 0)
         {
             if(defaultValue != NULL)
@@ -271,7 +246,7 @@ QList<T*> IocContext::GetAllImmediate()
 {
     QList<T*> ret;
     QString typeId = rttilookup(T);
-    foreach(Module mod,d->m_ModulesByType[typeId] )
+    foreach(RootBeanInfo mod,d->m_ModulesByType[typeId] )
     {
         ret.append(cast_any_bean_ptr(T, mod.ptr));
     }
@@ -295,8 +270,8 @@ void IocContext::GetAll(listener_list_t_templated loaded)
                     });
 
     //QHashNamedModules* modulesOfType = &d->m_Classes[typeId];
-    QList<Module> modulesOfType = d->m_ModulesByType[typeId];
-    foreach(Module module, modulesOfType)
+    QList<RootBeanInfo> modulesOfType = d->m_ModulesByType[typeId];
+    foreach(RootBeanInfo module, modulesOfType)
     {
         loaded(module.name, cast_any_bean_ptr(T, module.ptr), COLLECTION_ADDED);
     }
@@ -324,11 +299,11 @@ ModuleLazyChain< SrcT > IocContext::RegisterBean(SrcT *ptrIn, const QString &nam
     //QHashNamedModules::Iterator iter = modulesOfType->find(name);
     QHashNameToModule::Iterator iter(d->m_ModulesByName.find(name));
     QString typeId = rttilookup(SrcT);
-    Module *pMod;
+    RootBeanInfo *pMod;
     bool bDelete;
     if(iter == d->m_ModulesByName.end())
     {
-        pMod = new Module();
+        pMod = new RootBeanInfo();
         bDelete = true;
     }
     else
@@ -375,7 +350,7 @@ ModuleLazyChain< SrcT > IocContext::RegisterBean(SrcT *ptrIn, const QString &nam
 }
 
 template < class NamedInterface, class... AdditionalAnonymousInterfaces, class SrcT >
-ModuleLazyChain< SrcT > IocContext::RegisterBean(SrcT &obj, const QString &name = STD_OBJ_NAME, bool bUseCopy = true)
+ModuleLazyChain< SrcT > IocContext::RegisterBean(IocContext::SrcT obj, const QString &name = STD_OBJ_NAME, bool bUseCopy = true)
 {
     return RegisterBean<NamedInterface, AdditionalAnonymousInterfaces...>(&obj, name, bUseCopy, bUseCopy);
 }

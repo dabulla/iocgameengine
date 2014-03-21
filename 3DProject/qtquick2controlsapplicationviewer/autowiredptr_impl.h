@@ -13,6 +13,14 @@ class __AutowiredPtrPrivate
     friend class AutowiredPtr<T>;
 };
 
+class AutowiredHelper
+{
+    static AutowiredPtr_add(IEngineObject *engobj, __AutowiredPtrContainer fn)
+    {
+        engobj->__AutowiredPtr_add(fn);
+    }
+};
+
 //TODO: Implement syntax: "MainWndBean.ICamera.ViewMatrix" (Where "ViewMatrix" ist the internal name)
 // LazyChain.inject("MainWnd.ICamera[2]", typeOrIntenalName);
 // If this is evaluated before the bean exists... care also about lists...
@@ -22,7 +30,7 @@ template <class T, const char *pszInternalName >
 AutowiredPtr<T, pszInternalName>::AutowiredPtr(IEngineObject *engobj)
     :d(new __AutowiredPtrPrivate<T, pszInternalName>)
 {
-    engobj->__AutowiredPtr_add(
+    AutowiredHelper::__AutowiredPtr_add(
         [this](IIocContext *pEng)
         {
             this->d->m_pEngine = pEng;

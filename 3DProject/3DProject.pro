@@ -22,3 +22,6 @@ qtcAddDeployment()
 
 
 INCLUDEPATH += "F:/devel/boost_1_55_0"
+
+HEADERS += \
+    any_ptr.h

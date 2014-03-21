@@ -18,7 +18,7 @@ private:
         }
     }
     friend class IEngineObject;
-    friend class IIocContext;
+    //friend class IIocContext;
 };
 
 IEngineObject::IEngineObject()
@@ -41,8 +41,8 @@ IIocContext &IEngineObject::GetIocContext() const
     return *d->m_pEngine;
 }
 
-IocContext::IocContext()
-    : d(new IocContextPrivate())
+IocContext::IocContext(bool registerInterfacesOnParent = false)
+    : d(new IocContextPrivate(registerInterfacesOnParent))
 {
 }
 
@@ -57,7 +57,7 @@ int IocContext::Start(int argc, char *argv[])
 //    QHashNamedModules map;
 //    foreach( map, d->m_Classes )
 //    {
-        foreach(Module mod, d->m_ModulesByType[rttilookup(IEngineObject)] )
+        foreach(RootBeanInfo mod, d->m_ModulesByType[rttilookup(IEngineObject)] )
         {
             IEngineObject *engObj = cast_any_bean_ptr(IEngineObject, mod.ptr);
             if(engObj == NULL) continue;
@@ -82,6 +82,11 @@ int IocContext::Start(int argc, char *argv[])
         rc = 0;
     }
     return rc;
+}
+
+void IocContext::SetAsChildContext(IocContext *pParent)
+{
+
 }
 
 const QString& IocContext::GetString(const QString &name) const
